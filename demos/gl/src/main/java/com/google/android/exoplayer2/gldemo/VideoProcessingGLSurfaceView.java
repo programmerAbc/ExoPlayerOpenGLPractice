@@ -47,18 +47,25 @@ import javax.microedition.khronos.opengles.GL10;
  */
 public final class VideoProcessingGLSurfaceView extends GLSurfaceView {
 
-  /** Processes video frames, provided via a GL texture. */
+  /**
+   * Processes video frames, provided via a GL texture.
+   */
   public interface VideoProcessor {
-    /** Performs any required GL initialization. */
+
+    /**
+     * Performs any required GL initialization.
+     */
     void initialize();
 
-    /** Sets the size of the output surface in pixels. */
+    /**
+     * Sets the size of the output surface in pixels.
+     */
     void setSurfaceSize(int width, int height);
 
     /**
      * Draws using GL operations.
      *
-     * @param frameTexture The ID of a GL texture containing a video frame.
+     * @param frameTexture     The ID of a GL texture containing a video frame.
      * @param frameTimestampUs The presentation timestamp of the frame, in microseconds.
      */
     void draw(int frameTexture, long frameTimestampUs);
@@ -69,19 +76,22 @@ public final class VideoProcessingGLSurfaceView extends GLSurfaceView {
   private final VideoRenderer renderer;
   private final Handler mainHandler;
 
-  @Nullable private SurfaceTexture surfaceTexture;
-  @Nullable private Surface surface;
-  @Nullable private Player.VideoComponent videoComponent;
+  @Nullable
+  private SurfaceTexture surfaceTexture;
+  @Nullable
+  private Surface surface;
+  @Nullable
+  private Player.VideoComponent videoComponent;
 
   /**
    * Creates a new instance. Pass {@code true} for {@code requireSecureContext} if the {@link
    * GLSurfaceView GLSurfaceView's} associated GL context should handle secure content (if the
    * device supports it).
    *
-   * @param context The {@link Context}.
+   * @param context              The {@link Context}.
    * @param requireSecureContext Whether a GL context supporting protected content should be
-   *     created, if supported by the device.
-   * @param videoProcessor Processor that draws to the view.
+   *                             created, if supported by the device.
+   * @param videoProcessor       Processor that draws to the view.
    */
   public VideoProcessingGLSurfaceView(
       Context context, boolean requireSecureContext, VideoProcessor videoProcessor) {
@@ -103,15 +113,15 @@ public final class VideoProcessingGLSurfaceView extends GLSurfaceView {
             int[] glAttributes;
             if (requireSecureContext) {
               glAttributes =
-                  new int[] {
-                    EGL14.EGL_CONTEXT_CLIENT_VERSION,
-                    2,
-                    EGL_PROTECTED_CONTENT_EXT,
-                    EGL14.EGL_TRUE,
-                    EGL14.EGL_NONE
+                  new int[]{
+                      EGL14.EGL_CONTEXT_CLIENT_VERSION,
+                      2,
+                      EGL_PROTECTED_CONTENT_EXT,
+                      EGL14.EGL_TRUE,
+                      EGL14.EGL_NONE
                   };
             } else {
-              glAttributes = new int[] {EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE};
+              glAttributes = new int[]{EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE};
             }
             return egl.eglCreateContext(
                 display, eglConfig, /* share_context= */ EGL10.EGL_NO_CONTEXT, glAttributes);
@@ -129,8 +139,8 @@ public final class VideoProcessingGLSurfaceView extends GLSurfaceView {
               EGL10 egl, EGLDisplay display, EGLConfig config, Object nativeWindow) {
             int[] attribsList =
                 requireSecureContext
-                    ? new int[] {EGL_PROTECTED_CONTENT_EXT, EGL14.EGL_TRUE, EGL10.EGL_NONE}
-                    : new int[] {EGL10.EGL_NONE};
+                    ? new int[]{EGL_PROTECTED_CONTENT_EXT, EGL14.EGL_TRUE, EGL10.EGL_NONE}
+                    : new int[]{EGL10.EGL_NONE};
             return egl.eglCreateWindowSurface(display, config, nativeWindow, attribsList);
           }
 
@@ -141,6 +151,11 @@ public final class VideoProcessingGLSurfaceView extends GLSurfaceView {
         });
     setRenderer(renderer);
     setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+  }
+
+  @Override
+  public void requestRender() {
+    super.requestRender();
   }
 
   /**
@@ -214,7 +229,8 @@ public final class VideoProcessingGLSurfaceView extends GLSurfaceView {
     private final TimedValueQueue<Long> sampleTimestampQueue;
 
     private int texture;
-    @Nullable private SurfaceTexture surfaceTexture;
+    @Nullable
+    private SurfaceTexture surfaceTexture;
 
     private boolean initialized;
     private int width;

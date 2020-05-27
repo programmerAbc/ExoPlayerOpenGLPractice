@@ -53,7 +53,7 @@ import javax.microedition.khronos.opengles.GL10;
 
   private final Context context;
   private final Paint paint;
-  private final int[] textures;
+  //  private final int[] textures;
   private final Bitmap overlayBitmap;
   private final Bitmap logoBitmap;
   private final Canvas overlayCanvas;
@@ -73,8 +73,8 @@ import javax.microedition.khronos.opengles.GL10;
 
   public BitmapOverlayVideoProcessor(Context context) {
     this.context = context.getApplicationContext();
-    Matrix.perspectiveM(projectionMatrix, 0, 90, 1, 1f, 100f);
-//    Matrix.orthoM(projectionMatrix, 0, -1, 1, -1, 1, 1, 100);
+//    Matrix.perspectiveM(projectionMatrix, 0, 90, 1, 1f, 100f);
+    Matrix.orthoM(projectionMatrix, 0, -1, 1, -1, 1, 1, 100);
     Matrix.setIdentityM(modelMatrix, 0);
     if (mirror) {
       makeMirrorMatrix();
@@ -85,7 +85,6 @@ import javax.microedition.khronos.opengles.GL10;
     paint.setTextSize(64);
     paint.setAntiAlias(true);
     paint.setARGB(0xFF, 0xFF, 0xFF, 0xFF);
-    textures = new int[1];
     overlayBitmap = Bitmap.createBitmap(OVERLAY_WIDTH, OVERLAY_HEIGHT, Bitmap.Config.ARGB_8888);
     overlayCanvas = new Canvas(overlayBitmap);
     try {
@@ -104,16 +103,15 @@ import javax.microedition.khronos.opengles.GL10;
   }
 
   private void makeMirrorMatrix() {
-
     Matrix.setIdentityM(modelMatrix, 0);
-    Matrix.translateM(modelMatrix, 0, 0, 0, -1.5f);
-    Matrix.rotateM(modelMatrix, 0, 30, 0, 1, 0);
+    Matrix.translateM(modelMatrix, 0, 0, 0, -2f);
+    Matrix.rotateM(modelMatrix, 0, 180, 0, 1, 0);
     Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, modelMatrix, 0);
   }
 
   private void makeNotMirrorMatrix() {
     Matrix.setIdentityM(modelMatrix, 0);
-    Matrix.translateM(modelMatrix, 0, 0, 0, -1.5f);
+    Matrix.translateM(modelMatrix, 0, 0, 0, -2f);
     Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, modelMatrix, 0);
   }
 
@@ -166,13 +164,6 @@ import javax.microedition.khronos.opengles.GL10;
     }
     this.attributes = attributes;
     this.uniforms = uniforms;
-    GLES20.glGenTextures(1, textures, 0);
-    GLES20.glBindTexture(GL10.GL_TEXTURE_2D, textures[0]);
-    GLES20.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_NEAREST);
-    GLES20.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
-    GLES20.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S, GL10.GL_REPEAT);
-    GLES20.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T, GL10.GL_REPEAT);
-    GLUtils.texImage2D(GL10.GL_TEXTURE_2D, /* level= */ 0, overlayBitmap, /* border= */ 0);
     GLES20.glDisable(GLES20.GL_CULL_FACE);
   }
 
@@ -184,15 +175,7 @@ import javax.microedition.khronos.opengles.GL10;
 
   @Override
   public void draw(int frameTexture, long frameTimestampUs) {
-    // Draw to the canvas and store it in a texture.
-    String text = String.format(Locale.US, "%.02f", frameTimestampUs / (float) C.MICROS_PER_SECOND);
-    overlayBitmap.eraseColor(Color.TRANSPARENT);
-    overlayCanvas.drawBitmap(logoBitmap, /* left= */ 32, /* top= */ 32, paint);
-    overlayCanvas.drawText(text, /* x= */ 200, /* y= */ 130, paint);
-    GLES20.glBindTexture(GL10.GL_TEXTURE_2D, textures[0]);
-    GLUtils.texSubImage2D(
-        GL10.GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0, overlayBitmap);
-    GlUtil.checkGlError();
+    long startTime = System.currentTimeMillis();
 
     // Run the shader program.
     GlUtil.Uniform[] uniforms = Assertions.checkNotNull(this.uniforms);
@@ -202,9 +185,6 @@ import javax.microedition.khronos.opengles.GL10;
       switch (uniform.name) {
         case "tex_sampler_0":
           uniform.setSamplerTexId(frameTexture, /* unit= */ 0);
-          break;
-        case "tex_sampler_1":
-          uniform.setSamplerTexId(textures[0], /* unit= */ 1);
           break;
         case "scaleX":
           uniform.setFloat(bitmapScaleX);
@@ -234,6 +214,7 @@ import javax.microedition.khronos.opengles.GL10;
     GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, /* first= */ 0, /* count= */ 4);
     GlUtil.checkGlError();
+    Log.e(TAG, "draw use time:" + (System.currentTimeMillis() - startTime));
   }
 
   private static String loadAssetAsString(Context context, String assetFileName) {
