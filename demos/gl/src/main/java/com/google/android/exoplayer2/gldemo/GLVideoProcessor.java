@@ -21,6 +21,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
+import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
@@ -30,6 +31,12 @@ import com.google.android.exoplayer2.util.GlUtil;
 import com.google.android.exoplayer2.util.Util;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
+import javax.microedition.khronos.opengles.GL;
 
 /**
  * Video processor that demonstrates how to overlay a bitmap on video output using a GL shader. The
@@ -43,16 +50,34 @@ import java.io.InputStream;
   private final float[] projectionMatrix = new float[16];
   private final float[] modelMatrix = new float[16];
   private final float[] mvpMatrix = new float[16];
+  private final float[] vertexs = {
+      -1.0f, -1.0f, -1, 1.0f,
+      1.0f, -1.0f, 0, 1.0f,
+      -1.0f, 1.0f, 0, 1.0f,
+      1.0f, 1.0f, -1, 1.0f};
+  private final float[] texCoords = {
+      0.0f, 1.0f,
+      1.0f, 1.0f,
+      0.0f, 0.0f,
+      1.0f, 0.0f,
+  };
+
+  private final short[] index = {
+      0, 1, 2,
+      1, 3, 2
+  };
+  private int[] vertexsBuffer = {0};
+
+  private int[] texCoordsBuffer = {0};
+
+  private int[] indexBuffer = {0};
 
   private final Context context;
 
   private int program;
-  @Nullable
-  private GlUtil.Attribute[] attributes;
-  @Nullable
-  private GlUtil.Uniform[] uniforms;
 
   int uMvpMatrix;
+  int uTexSampler0;
 
   boolean mirror = true;
   boolean wantMirror = mirror;
@@ -111,32 +136,29 @@ import java.io.InputStream;
       Log.e(TAG, "initialize:" + Log.getStackTraceString(e));
     }
     uMvpMatrix = GLES20.glGetUniformLocation(program, "uMvpMatrix");
-    GlUtil.Attribute[] attributes = GlUtil.getAttributes(program);
-    GlUtil.Uniform[] uniforms = GlUtil.getUniforms(program);
-    for (GlUtil.Attribute attribute : attributes) {
-      if (attribute.name.equals("a_position")) {
-        attribute.setBuffer(
-            new float[]{
-                -1.0f, -1.0f, -1, 1.0f,
-                1.0f, -1.0f, 0, 1.0f,
-                -1.0f, 1.0f, 0, 1.0f,
-                1.0f, 1.0f, -1, 1.0f,
-            },
-            4);
-      } else if (attribute.name.equals("a_texcoord")) {
-        attribute.setBuffer(
-            new float[]{
-                0.0f, 1.0f, 1.0f,
-                1.0f, 1.0f, 1.0f,
-                0.0f, 0.0f, 1.0f,
-                1.0f, 0.0f, 1.0f,
-            },
-            3);
-      }
-    }
-    this.attributes = attributes;
-    this.uniforms = uniforms;
+    uTexSampler0 = GLES20.glGetUniformLocation(program, "tex_sampler_0");
+    GLES20.glGenBuffers(1, IntBuffer.wrap(vertexsBuffer));
+    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vertexsBuffer[0]);
+    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexs.length,
+        GlUtil.createBuffer(vertexs), GLES20.GL_STATIC_DRAW);
+
+    GLES20.glGenBuffers(1, IntBuffer.wrap(texCoordsBuffer));
+    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, texCoordsBuffer[0]);
+    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, texCoords.length,
+        GlUtil.createBuffer(texCoords), GLES20.GL_STATIC_DRAW);
+
+    GLES20.glGenBuffers(1, IntBuffer.wrap(indexBuffer));
+    GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer[0]);
+    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length,
+        createShortBuffer(index), GLES20.GL_STATIC_DRAW);
+    GLES20.glUseProgram(program);
+    GLES20.glEnableVertexAttribArray(0);
+    GLES20.glEnableVertexAttribArray(1);
+    GLES20.glBindAttribLocation(program, 0, "a_position");
+    GLES20.glBindAttribLocation(program, 1, "a_texcoord");
+
     GLES20.glDisable(GLES20.GL_CULL_FACE);
+    GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
   }
 
   @Override
@@ -146,40 +168,28 @@ import java.io.InputStream;
 
   @Override
   public void draw(int frameTexture, long frameTimestampUs) {
-    long startTime = System.currentTimeMillis();
+    try {
+      long startTime = System.currentTimeMillis();
+      updateMatrix();
+      try {
+        GLES20.glUniformMatrix4fv(uMvpMatrix, 1, false, mvpMatrix, 0);
+      } catch (Exception e) {
 
-    // Run the shader program.
-    GlUtil.Uniform[] uniforms = Assertions.checkNotNull(this.uniforms);
-    GlUtil.Attribute[] attributes = Assertions.checkNotNull(this.attributes);
-    GLES20.glUseProgram(program);
-    for (GlUtil.Uniform uniform : uniforms) {
-      switch (uniform.name) {
-        case "tex_sampler_0":
-          uniform.setSamplerTexId(frameTexture, /* unit= */ 0);
-          break;
-        case "uMvpMatrix":
-          updateMatrix();
-          try {
-            GLES20.glUniformMatrix4fv(uMvpMatrix, 1, false, mvpMatrix, 0);
-          } catch (Exception e) {
-
-          }
-          break;
       }
+      GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture);
+      GLES20.glUniform1i(uTexSampler0, 0);
+      GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vertexsBuffer[0]);
+      GLES20.glVertexAttribPointer(0, 4, GLES20.GL_FLOAT, false, 0, 0);
+      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, texCoordsBuffer[0]);
+      GLES20.glVertexAttribPointer(1, 2, GLES20.GL_FLOAT, false, 0, 0);
+      GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer[0]);
+      GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_SHORT, 0);
+      GlUtil.checkGlError();
+      Log.e(TAG, "draw use time:" + (System.currentTimeMillis() - startTime));
+    } catch (Exception e) {
+      Log.e(TAG, "draw:" + Log.getStackTraceString(e));
     }
-    for (GlUtil.Attribute copyExternalAttribute : attributes) {
-      copyExternalAttribute.bind();
-    }
-    for (GlUtil.Uniform copyExternalUniform : uniforms) {
-      if (copyExternalUniform.name.equals("uMvpMatrix")) {
-        continue;
-      }
-      copyExternalUniform.bind();
-    }
-    GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-    GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, /* first= */ 0, /* count= */ 4);
-    GlUtil.checkGlError();
-    Log.e(TAG, "draw use time:" + (System.currentTimeMillis() - startTime));
   }
 
   private static String loadAssetAsString(Context context, String assetFileName) {
@@ -192,5 +202,10 @@ import java.io.InputStream;
     } finally {
       Util.closeQuietly(inputStream);
     }
+  }
+
+  public static ShortBuffer createShortBuffer(short[] data) {
+    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * Short.BYTES);
+    return (ShortBuffer) byteBuffer.order(ByteOrder.nativeOrder()).asShortBuffer().put(data).flip();
   }
 }
