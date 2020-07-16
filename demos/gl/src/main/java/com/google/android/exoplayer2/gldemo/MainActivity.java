@@ -64,7 +64,7 @@ public final class MainActivity extends Activity {
   private PlayerView playerView;
   @Nullable
   private VideoProcessingGLSurfaceView videoProcessingGLSurfaceView;
-  BitmapOverlayVideoProcessor bitmapOverlayVideoProcessor;
+  GLVideoProcessor GLVideoProcessor;
   @Nullable
   private SimpleExoPlayer player;
 
@@ -81,23 +81,23 @@ public final class MainActivity extends Activity {
           context, R.string.error_protected_content_extension_not_supported, Toast.LENGTH_LONG)
           .show();
     }
-    this.bitmapOverlayVideoProcessor = new BitmapOverlayVideoProcessor(context);
+    this.GLVideoProcessor = new GLVideoProcessor(context);
     VideoProcessingGLSurfaceView videoProcessingGLSurfaceView =
         new VideoProcessingGLSurfaceView(
-            context, requestSecureSurface, bitmapOverlayVideoProcessor);
+            context, requestSecureSurface, GLVideoProcessor);
     FrameLayout contentFrame = findViewById(R.id.exo_content_frame);
     contentFrame.addView(videoProcessingGLSurfaceView);
     this.videoProcessingGLSurfaceView = videoProcessingGLSurfaceView;
     findViewById(R.id.mirrorOff).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        bitmapOverlayVideoProcessor.setMirror(false);
+        GLVideoProcessor.setMirror(false);
       }
     });
     findViewById(R.id.mirrorOn).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        bitmapOverlayVideoProcessor.setMirror(true);
+        GLVideoProcessor.setMirror(true);
       }
     });
   }

@@ -19,6 +19,8 @@ uniform samplerExternalOES tex_sampler_0;
 
 varying vec2 v_texcoord;
 void main() {
-    gl_FragColor = texture2D(tex_sampler_0, v_texcoord);
+    vec4 c=texture2D(tex_sampler_0, v_texcoord);
+    float luminance=c.r*0.35+c.g*0.71+c.b*0.12;
+    gl_FragColor =vec4(luminance, luminance, luminance, 1);
 }
 

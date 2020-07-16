@@ -19,44 +19,32 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.opengl.GLES20;
-import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 import androidx.annotation.Nullable;
-import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.GlUtil;
 import com.google.android.exoplayer2.util.Util;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Locale;
-import javax.microedition.khronos.opengles.GL10;
 
 /**
  * Video processor that demonstrates how to overlay a bitmap on video output using a GL shader. The
  * bitmap is drawn using an Android {@link Canvas}.
  */
-/* package */ final class BitmapOverlayVideoProcessor
+/* package */ final class GLVideoProcessor
     implements VideoProcessingGLSurfaceView.VideoProcessor {
 
-  public static final String TAG = BitmapOverlayVideoProcessor.class.getSimpleName();
+  public static final String TAG = GLVideoProcessor.class.getSimpleName();
 
   private final float[] projectionMatrix = new float[16];
   private final float[] modelMatrix = new float[16];
   private final float[] mvpMatrix = new float[16];
-  private static final int OVERLAY_WIDTH = 512;
-  private static final int OVERLAY_HEIGHT = 256;
 
   private final Context context;
-  private final Paint paint;
-  //  private final int[] textures;
-  private final Bitmap overlayBitmap;
-  private final Bitmap logoBitmap;
-  private final Canvas overlayCanvas;
 
   private int program;
   @Nullable
@@ -66,34 +54,18 @@ import javax.microedition.khronos.opengles.GL10;
 
   int uMvpMatrix;
 
-  private float bitmapScaleX;
-  private float bitmapScaleY;
   boolean mirror = true;
   boolean wantMirror = mirror;
 
-  public BitmapOverlayVideoProcessor(Context context) {
+  public GLVideoProcessor(Context context) {
     this.context = context.getApplicationContext();
-//    Matrix.perspectiveM(projectionMatrix, 0, 90, 1, 1f, 100f);
-    Matrix.orthoM(projectionMatrix, 0, -1, 1, -1, 1, 1, 100);
+    Matrix.perspectiveM(projectionMatrix, 0, 90, 1, 1f, 100f);
+//    Matrix.orthoM(projectionMatrix, 0, -1, 1, -1, 1, 1, 100);
     Matrix.setIdentityM(modelMatrix, 0);
     if (mirror) {
       makeMirrorMatrix();
     } else {
       makeNotMirrorMatrix();
-    }
-    paint = new Paint();
-    paint.setTextSize(64);
-    paint.setAntiAlias(true);
-    paint.setARGB(0xFF, 0xFF, 0xFF, 0xFF);
-    overlayBitmap = Bitmap.createBitmap(OVERLAY_WIDTH, OVERLAY_HEIGHT, Bitmap.Config.ARGB_8888);
-    overlayCanvas = new Canvas(overlayBitmap);
-    try {
-      logoBitmap =
-          ((BitmapDrawable)
-              context.getPackageManager().getApplicationIcon(context.getPackageName()))
-              .getBitmap();
-    } catch (PackageManager.NameNotFoundException e) {
-      throw new IllegalStateException(e);
     }
   }
 
@@ -104,14 +76,14 @@ import javax.microedition.khronos.opengles.GL10;
 
   private void makeMirrorMatrix() {
     Matrix.setIdentityM(modelMatrix, 0);
-    Matrix.translateM(modelMatrix, 0, 0, 0, -2f);
+    Matrix.translateM(modelMatrix, 0, 0, 0, -1f);
     Matrix.rotateM(modelMatrix, 0, 180, 0, 1, 0);
     Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, modelMatrix, 0);
   }
 
   private void makeNotMirrorMatrix() {
     Matrix.setIdentityM(modelMatrix, 0);
-    Matrix.translateM(modelMatrix, 0, 0, 0, -2f);
+    Matrix.translateM(modelMatrix, 0, 0, 0, -1f);
     Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, modelMatrix, 0);
   }
 
@@ -145,10 +117,10 @@ import javax.microedition.khronos.opengles.GL10;
       if (attribute.name.equals("a_position")) {
         attribute.setBuffer(
             new float[]{
-                -1.0f, -1.0f, 0, 1.0f,
+                -1.0f, -1.0f, -1, 1.0f,
                 1.0f, -1.0f, 0, 1.0f,
                 -1.0f, 1.0f, 0, 1.0f,
-                1.0f, 1.0f, 0, 1.0f,
+                1.0f, 1.0f, -1, 1.0f,
             },
             4);
       } else if (attribute.name.equals("a_texcoord")) {
@@ -169,8 +141,7 @@ import javax.microedition.khronos.opengles.GL10;
 
   @Override
   public void setSurfaceSize(int width, int height) {
-    bitmapScaleX = (float) width / OVERLAY_WIDTH;
-    bitmapScaleY = (float) height / OVERLAY_HEIGHT;
+
   }
 
   @Override
@@ -185,12 +156,6 @@ import javax.microedition.khronos.opengles.GL10;
       switch (uniform.name) {
         case "tex_sampler_0":
           uniform.setSamplerTexId(frameTexture, /* unit= */ 0);
-          break;
-        case "scaleX":
-          uniform.setFloat(bitmapScaleX);
-          break;
-        case "scaleY":
-          uniform.setFloat(bitmapScaleY);
           break;
         case "uMvpMatrix":
           updateMatrix();

@@ -24,6 +24,7 @@ import android.opengl.EGL14;
 import android.opengl.EGLDisplay;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.opengl.GLES32;
 import android.text.TextUtils;
 import androidx.annotation.Nullable;
 import com.google.android.exoplayer2.C;
