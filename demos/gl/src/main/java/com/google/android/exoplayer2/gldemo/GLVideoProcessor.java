@@ -139,26 +139,27 @@ import javax.microedition.khronos.opengles.GL;
     uTexSampler0 = GLES20.glGetUniformLocation(program, "tex_sampler_0");
     GLES20.glGenBuffers(1, IntBuffer.wrap(vertexsBuffer));
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vertexsBuffer[0]);
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexs.length,
+    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexs.length*Float.BYTES,
         GlUtil.createBuffer(vertexs), GLES20.GL_STATIC_DRAW);
 
     GLES20.glGenBuffers(1, IntBuffer.wrap(texCoordsBuffer));
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, texCoordsBuffer[0]);
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, texCoords.length,
+    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, texCoords.length*Float.BYTES,
         GlUtil.createBuffer(texCoords), GLES20.GL_STATIC_DRAW);
 
     GLES20.glGenBuffers(1, IntBuffer.wrap(indexBuffer));
     GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer[0]);
-    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length,
+    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length*Short.BYTES,
         createShortBuffer(index), GLES20.GL_STATIC_DRAW);
-    GLES20.glUseProgram(program);
+
     GLES20.glEnableVertexAttribArray(0);
     GLES20.glEnableVertexAttribArray(1);
     GLES20.glBindAttribLocation(program, 0, "a_position");
     GLES20.glBindAttribLocation(program, 1, "a_texcoord");
-
     GLES20.glDisable(GLES20.GL_CULL_FACE);
+
     GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+    GLES20.glUseProgram(program);
   }
 
   @Override
@@ -184,7 +185,7 @@ import javax.microedition.khronos.opengles.GL;
       GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, texCoordsBuffer[0]);
       GLES20.glVertexAttribPointer(1, 2, GLES20.GL_FLOAT, false, 0, 0);
       GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer[0]);
-      GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_SHORT, 0);
+      GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, 0);
       GlUtil.checkGlError();
       Log.e(TAG, "draw use time:" + (System.currentTimeMillis() - startTime));
     } catch (Exception e) {
