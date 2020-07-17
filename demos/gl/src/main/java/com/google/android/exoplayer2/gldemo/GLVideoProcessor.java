@@ -62,7 +62,7 @@ import javax.microedition.khronos.opengles.GL;
       1.0f, 0.0f,
   };
 
-  private final short[] index = {
+  private final int[] index = {
       0, 1, 2,
       1, 3, 2
   };
@@ -81,6 +81,8 @@ import javax.microedition.khronos.opengles.GL;
 
   boolean mirror = true;
   boolean wantMirror = mirror;
+
+  int a_position;
 
   public GLVideoProcessor(Context context) {
     this.context = context.getApplicationContext();
@@ -149,12 +151,14 @@ import javax.microedition.khronos.opengles.GL;
     tb = intBuffer.get();
     ib = intBuffer.get();
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vb);
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexs.length * 4,
+    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexs.length * FLOAT_BYTES,
         createFloatBuffer(vertexs), GLES20.GL_STATIC_DRAW);
     GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, ib);
-    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length * 2, createShortBuffer(index),
+    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length * INT_BYTES, createIntBuffer(index),
         GLES20.GL_STATIC_DRAW);
-
+    a_position = GLES20.glGetAttribLocation(program, "a_position");
+    GLES20.glEnableVertexAttribArray(a_position);
+    GLES20.glUseProgram(program);
   }
 
   @Override
@@ -166,16 +170,14 @@ import javax.microedition.khronos.opengles.GL;
   public void draw(int frameTexture, long frameTimestampUs) {
     try {
       long startTime = System.currentTimeMillis();
-      GLES20.glUseProgram(program);
+
       GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-      int a_position = GLES20.glGetAttribLocation(program, "a_position");
-      GLES20.glEnableVertexAttribArray(a_position);
       GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vb);
       GLES20.glVertexAttribPointer(a_position, 4, GLES20.GL_FLOAT, false, 0,
           0);
       GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, ib);
-      GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT,
-         0);
+      GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_INT,
+          0);
       GlUtil.checkGlError();
       Log.e(TAG, "draw use time:" + (System.currentTimeMillis() - startTime));
     } catch (Exception e) {
@@ -196,12 +198,17 @@ import javax.microedition.khronos.opengles.GL;
   }
 
   public static ShortBuffer createShortBuffer(short[] data) {
-    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * 2);
+    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * SHORT_BYTES);
     return (ShortBuffer) byteBuffer.order(ByteOrder.nativeOrder()).asShortBuffer().put(data).flip();
   }
 
+  public static IntBuffer createIntBuffer(int[] data) {
+    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * INT_BYTES);
+    return (IntBuffer) byteBuffer.order(ByteOrder.nativeOrder()).asIntBuffer().put(data).flip();
+  }
+
   public static FloatBuffer createFloatBuffer(float[] data) {
-    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * 4);
+    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * FLOAT_BYTES);
     return (FloatBuffer) byteBuffer.order(ByteOrder.nativeOrder()).asFloatBuffer().put(data).flip();
   }
 
@@ -210,5 +217,8 @@ import javax.microedition.khronos.opengles.GL;
     return (IntBuffer) byteBuffer.order(ByteOrder.nativeOrder()).asIntBuffer();
   }
 
+  public static final int INT_BYTES = 4;
+  public static final int SHORT_BYTES = 2;
+  public static final int FLOAT_BYTES = 4;
 
 }
