@@ -73,7 +73,7 @@ import javax.microedition.khronos.opengles.GL;
 
   int uMvpMatrix;
 
-  boolean mirror = true;
+  boolean mirror = false;
   boolean wantMirror = mirror;
 
   int a_position;
@@ -82,8 +82,8 @@ import javax.microedition.khronos.opengles.GL;
 
   public GLVideoProcessor(Context context) {
     this.context = context.getApplicationContext();
-//    Matrix.perspectiveM(projectionMatrix, 0, 90, 1, 1f, 100f);
-    Matrix.orthoM(projectionMatrix, 0, -1, 1, -1, 1, 1, 100);
+    Matrix.perspectiveM(projectionMatrix, 0, 90, 1, 1f, 100f);
+//    Matrix.orthoM(projectionMatrix, 0, -1, 1, -1, 1, 1, 100);
     Matrix.setIdentityM(modelMatrix, 0);
     if (mirror) {
       makeMirrorMatrix();
@@ -186,7 +186,7 @@ import javax.microedition.khronos.opengles.GL;
       long startTime = System.currentTimeMillis();
       GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
       updateMatrix();
-      GLES20.glUniformMatrix4fv(uMvpMatrix,1,false,mvpMatrix,0);
+      GLES20.glUniformMatrix4fv(uMvpMatrix, 1, false, mvpMatrix, 0);
       GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
       GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture);
       GLES20.glUniform1i(tex_sampler_0, 0);
