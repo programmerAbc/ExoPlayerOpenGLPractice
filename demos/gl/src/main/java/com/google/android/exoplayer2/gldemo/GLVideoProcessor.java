@@ -16,17 +16,12 @@
 package com.google.android.exoplayer2.gldemo;
 
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.drawable.BitmapDrawable;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 import androidx.annotation.Nullable;
-import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.GlUtil;
 import com.google.android.exoplayer2.util.Util;
 import java.io.IOException;
@@ -68,7 +63,7 @@ import javax.microedition.khronos.opengles.GL;
   };
   private int vb;
 
-  private int tb;
+  private int tcb;
 
   private int ib;
 
@@ -77,12 +72,13 @@ import javax.microedition.khronos.opengles.GL;
   private int program;
 
   int uMvpMatrix;
-  int uTexSampler0;
 
   boolean mirror = true;
   boolean wantMirror = mirror;
 
   int a_position;
+  int a_texcoord;
+  int tex_sampler_0;
 
   public GLVideoProcessor(Context context) {
     this.context = context.getApplicationContext();
@@ -128,16 +124,25 @@ import javax.microedition.khronos.opengles.GL;
 
   @Override
   public void initialize() {
-    String vertexShaderCode =
-        "attribute vec4 a_position;\n"
-            + "void main() {\n"
-            + " gl_Position = a_position;\n"
-            + "}\n";
+    String vertexShaderCode = "uniform mat4 uMvpMatrix;\n"
+        + "attribute vec4 a_position;\n"
+        + "attribute vec3 a_texcoord;\n"
+        + "varying vec2 v_texcoord;\n"
+        + "void main() {\n"
+        + " gl_Position =uMvpMatrix * a_position;\n"
+        + " v_texcoord = a_texcoord.xy;\n"
+        + "}\n";
 
-    String fragmentShaderCode =
-        "void main() {\n"
-            + "    gl_FragColor =vec4(1,1,0,1);\n"
-            + "}\n";
+    String fragmentShaderCode = "#extension GL_OES_EGL_image_external : require\n"
+        + "precision mediump float;\n"
+        + "// External texture containing video decoder output.\n"
+        + "uniform samplerExternalOES tex_sampler_0;\n"
+        + "\n"
+        + "varying vec2 v_texcoord;\n"
+        + "void main() {\n"
+        + "    vec4 c=texture2D(tex_sampler_0, v_texcoord);\n"
+        + "    gl_FragColor =c;\n"
+        + "}";
     try {
       program = GlUtil.compileProgram(vertexShaderCode, fragmentShaderCode);
     } catch (Exception e) {
@@ -146,18 +151,27 @@ import javax.microedition.khronos.opengles.GL;
     GLES20.glDisable(GLES20.GL_CULL_FACE);
     IntBuffer intBuffer = createIntBuffer(3);
     GLES20.glGenBuffers(3, intBuffer);
-//    intBuffer.flip();
     vb = intBuffer.get();
-    tb = intBuffer.get();
+    tcb = intBuffer.get();
     ib = intBuffer.get();
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vb);
     GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexs.length * FLOAT_BYTES,
         createFloatBuffer(vertexs), GLES20.GL_STATIC_DRAW);
+
+    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tcb);
+    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, texCoords.length * FLOAT_BYTES,
+        createFloatBuffer(texCoords), GLES20.GL_STATIC_DRAW);
+
     GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, ib);
-    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length * INT_BYTES, createIntBuffer(index),
+    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length * INT_BYTES,
+        createIntBuffer(index),
         GLES20.GL_STATIC_DRAW);
     a_position = GLES20.glGetAttribLocation(program, "a_position");
     GLES20.glEnableVertexAttribArray(a_position);
+    a_texcoord = GLES20.glGetAttribLocation(program, "a_texcoord");
+    GLES20.glEnableVertexAttribArray(a_texcoord);
+    tex_sampler_0 = GLES20.glGetUniformLocation(program, "tex_sampler_0");
+    uMvpMatrix = GLES20.glGetUniformLocation(program, "uMvpMatrix");
     GLES20.glUseProgram(program);
   }
 
@@ -170,11 +184,20 @@ import javax.microedition.khronos.opengles.GL;
   public void draw(int frameTexture, long frameTimestampUs) {
     try {
       long startTime = System.currentTimeMillis();
-
       GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+      updateMatrix();
+      GLES20.glUniformMatrix4fv(uMvpMatrix,1,false,mvpMatrix,0);
+      GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+      GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture);
+      GLES20.glUniform1i(tex_sampler_0, 0);
+
       GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vb);
       GLES20.glVertexAttribPointer(a_position, 4, GLES20.GL_FLOAT, false, 0,
           0);
+      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tcb);
+      GLES20.glVertexAttribPointer(a_texcoord, 2, GLES20.GL_FLOAT, false, 0,
+          0);
+
       GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, ib);
       GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_INT,
           0);
