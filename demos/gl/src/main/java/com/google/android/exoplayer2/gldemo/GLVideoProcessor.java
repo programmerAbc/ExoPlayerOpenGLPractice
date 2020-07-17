@@ -126,39 +126,39 @@ import javax.microedition.khronos.opengles.GL;
 
   @Override
   public void initialize() {
-    String vertexShaderCode =
-        loadAssetAsString(context, "bitmap_overlay_video_processor_vertex.glsl");
-    String fragmentShaderCode =
-        loadAssetAsString(context, "bitmap_overlay_video_processor_fragment.glsl");
+    String vertexShaderCode = "uniform mat4 uMvpMatrix;\n"
+        + "attribute vec4 a_position;\n"
+        + "attribute vec3 a_texcoord;\n"
+        + "varying vec2 v_texcoord;\n"
+        + "void main() {\n"
+        + " gl_Position =uMvpMatrix * a_position;\n"
+        + " v_texcoord = a_texcoord.xy;\n"
+        + "}\n";
+
+    String fragmentShaderCode = "#extension GL_OES_EGL_image_external : require\n"
+        + "precision mediump float;\n"
+        + "// External texture containing video decoder output.\n"
+        + "uniform samplerExternalOES tex_sampler_0;\n"
+        + "\n"
+        + "varying vec2 v_texcoord;\n"
+        + "void main() {\n"
+        + "    vec4 c=texture2D(tex_sampler_0, v_texcoord);\n"
+        + "    float luminance=c.r*0.35+c.g*0.71+c.b*0.12;\n"
+        + "    gl_FragColor =C;\n"
+        + "}\n";
+//    String fragmentShaderCode =
+//         "void main() {\n"
+//        + "    gl_FragColor =vec4(1, 0, 0, 1);\n"
+//        + "}\n";
     try {
       program = GlUtil.compileProgram(vertexShaderCode, fragmentShaderCode);
     } catch (Exception e) {
       Log.e(TAG, "initialize:" + Log.getStackTraceString(e));
     }
-    uMvpMatrix = GLES20.glGetUniformLocation(program, "uMvpMatrix");
-    uTexSampler0 = GLES20.glGetUniformLocation(program, "tex_sampler_0");
-    GLES20.glGenBuffers(1, IntBuffer.wrap(vertexsBuffer));
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vertexsBuffer[0]);
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, vertexs.length,
-        GlUtil.createBuffer(vertexs), GLES20.GL_STATIC_DRAW);
 
-    GLES20.glGenBuffers(1, IntBuffer.wrap(texCoordsBuffer));
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, texCoordsBuffer[0]);
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, texCoords.length,
-        GlUtil.createBuffer(texCoords), GLES20.GL_STATIC_DRAW);
-
-    GLES20.glGenBuffers(1, IntBuffer.wrap(indexBuffer));
-    GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer[0]);
-    GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, index.length,
-        createShortBuffer(index), GLES20.GL_STATIC_DRAW);
-    GLES20.glUseProgram(program);
-    GLES20.glEnableVertexAttribArray(0);
-    GLES20.glEnableVertexAttribArray(1);
-    GLES20.glBindAttribLocation(program, 0, "a_position");
-    GLES20.glBindAttribLocation(program, 1, "a_texcoord");
 
     GLES20.glDisable(GLES20.GL_CULL_FACE);
-    GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+
   }
 
   @Override
@@ -170,21 +170,28 @@ import javax.microedition.khronos.opengles.GL;
   public void draw(int frameTexture, long frameTimestampUs) {
     try {
       long startTime = System.currentTimeMillis();
+      GLES20.glUseProgram(program);
+      GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+      uMvpMatrix = GLES20.glGetUniformLocation(program, "uMvpMatrix");
+      uTexSampler0 = GLES20.glGetUniformLocation(program, "tex_sampler_0");
       updateMatrix();
       try {
         GLES20.glUniformMatrix4fv(uMvpMatrix, 1, false, mvpMatrix, 0);
       } catch (Exception e) {
 
       }
+      GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
       GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture);
       GLES20.glUniform1i(uTexSampler0, 0);
-      GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vertexsBuffer[0]);
-      GLES20.glVertexAttribPointer(0, 4, GLES20.GL_FLOAT, false, 0, 0);
-      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, texCoordsBuffer[0]);
-      GLES20.glVertexAttribPointer(1, 2, GLES20.GL_FLOAT, false, 0, 0);
-      GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer[0]);
-      GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_SHORT, 0);
+      int a_position = GLES20.glGetAttribLocation(program, "a_position");
+      GLES20.glEnableVertexAttribArray(a_position);
+      int a_texcoord = GLES20.glGetAttribLocation(program, "a_texcoord");
+      GLES20.glEnableVertexAttribArray(a_texcoord);
+      GLES20.glVertexAttribPointer(a_position, 4, GLES20.GL_FLOAT, false, 0,
+          createFloatBuffer(vertexs));
+      GLES20.glVertexAttribPointer(a_texcoord, 2, GLES20.GL_FLOAT, false, 0,
+          createFloatBuffer(texCoords));
+      GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, createShortBuffer(index));
       GlUtil.checkGlError();
       Log.e(TAG, "draw use time:" + (System.currentTimeMillis() - startTime));
     } catch (Exception e) {
@@ -208,4 +215,11 @@ import javax.microedition.khronos.opengles.GL;
     ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * Short.BYTES);
     return (ShortBuffer) byteBuffer.order(ByteOrder.nativeOrder()).asShortBuffer().put(data).flip();
   }
+
+  public static FloatBuffer createFloatBuffer(float[] data) {
+    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(data.length * Float.BYTES);
+    return (FloatBuffer) byteBuffer.order(ByteOrder.nativeOrder()).asFloatBuffer().put(data).flip();
+  }
+
+
 }
