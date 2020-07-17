@@ -57,7 +57,7 @@ import java.util.UUID;
 public final class MainActivity extends Activity {
 
   private static final String DEFAULT_MEDIA_URI =
-      "https://rs.everygod.com/video/xxx_1567764499220_1567764498465.mp4";
+      "http://192.168.1.175/file/60.mp4";
 
   private static final String ACTION_VIEW = "com.google.android.exoplayer.gldemo.action.VIEW";
   private static final String EXTENSION_EXTRA = "extension";
