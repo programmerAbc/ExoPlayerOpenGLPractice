@@ -44,10 +44,6 @@ import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.EventLogger;
 import com.google.android.exoplayer2.util.GlUtil;
 import com.google.android.exoplayer2.util.Util;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
 import java.util.UUID;
 
 /**
@@ -68,7 +64,7 @@ public final class MainActivity extends Activity {
   private PlayerView playerView;
   @Nullable
   private VideoProcessingGLSurfaceView videoProcessingGLSurfaceView;
-  GLVideoProcessor GLVideoProcessor;
+  GLVideoProcessor glVideoProcessor;
   @Nullable
   private SimpleExoPlayer player;
 
@@ -85,23 +81,23 @@ public final class MainActivity extends Activity {
           context, R.string.error_protected_content_extension_not_supported, Toast.LENGTH_LONG)
           .show();
     }
-    this.GLVideoProcessor = new GLVideoProcessor(context);
+    this.glVideoProcessor = new GLVideoProcessor(context);
     VideoProcessingGLSurfaceView videoProcessingGLSurfaceView =
         new VideoProcessingGLSurfaceView(
-            context, requestSecureSurface, GLVideoProcessor);
+            context, requestSecureSurface, glVideoProcessor);
     FrameLayout contentFrame = findViewById(R.id.exo_content_frame);
     contentFrame.addView(videoProcessingGLSurfaceView);
     this.videoProcessingGLSurfaceView = videoProcessingGLSurfaceView;
     findViewById(R.id.mirrorOff).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        GLVideoProcessor.setMirror(false);
+        glVideoProcessor.setMirror(false);
       }
     });
     findViewById(R.id.mirrorOn).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        GLVideoProcessor.setMirror(true);
+        glVideoProcessor.setMirror(true);
       }
     });
   }
